@@ -61,16 +61,16 @@ header p {
 }
 
 .aisle-grid {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .rack-grid,
 .level-grid {
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .bin-grid {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .option {
@@ -378,10 +378,15 @@ function downloadQR() {
 }
 
 
-// AISLE A1 TO A21
+// AISLE A1 TO A21 + CR01, FV01, FR01
 createGrid(
   "aisleGrid",
-  Array.from({length: 21}, (_, i) => "A" + (i + 1)),
+  [
+    ...Array.from({length: 21}, (_, i) => "A" + (i + 1)),
+    "CR01",
+    "FV01",
+    "FR01"
+  ],
   "aisle"
 );
 
