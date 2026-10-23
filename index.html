@@ -1,0 +1,424 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>PrasadQRCode Generator</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f1f3f6;
+  color: #111827;
+}
+
+header {
+  background: #111827;
+  color: white;
+  padding: 22px 15px;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+header p {
+  margin: 8px 0 0;
+  color: #d1d5db;
+}
+
+.container {
+  max-width: 750px;
+  margin: 15px auto;
+  padding: 18px;
+  background: white;
+  border-radius: 18px;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.section h2 {
+  font-size: 23px;
+  margin-bottom: 15px;
+}
+
+.grid {
+  display: grid;
+  gap: 10px;
+}
+
+.aisle-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.rack-grid,
+.level-grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.bin-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.option {
+  border: none;
+  background: #eef0f4;
+  color: #111827;
+  border-radius: 15px;
+  min-height: 60px;
+  font-size: 19px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.option.active {
+  background: #111827;
+  color: white;
+}
+
+.selection {
+  background: #f3f4f6;
+  border-radius: 12px;
+  padding: 18px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.selection p {
+  margin: 0 0 8px;
+  color: #6b7280;
+}
+
+#selectedLocation {
+  font-size: 25px;
+  font-weight: bold;
+  word-break: break-word;
+}
+
+.generate,
+.download {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 12px;
+}
+
+.generate {
+  background: #111827;
+  color: white;
+}
+
+.download {
+  background: #16a34a;
+  color: white;
+}
+
+#qrResult {
+  display: none;
+  text-align: center;
+  margin-top: 25px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 15px;
+}
+
+#qrCanvas {
+  max-width: 100%;
+  height: auto;
+}
+
+#qrText {
+  font-size: 23px;
+  font-weight: bold;
+  margin: 15px 0;
+  word-break: break-word;
+}
+
+.footer {
+  text-align: center;
+  padding: 20px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+@media(max-width:400px) {
+  .container {
+    margin: 10px;
+    padding: 14px;
+  }
+
+  .option {
+    min-height: 55px;
+    font-size: 17px;
+  }
+
+  #selectedLocation {
+    font-size: 21px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>PrasadQRCode</h1>
+  <p>Warehouse Location QR Generator</p>
+</header>
+
+<div class="container">
+
+  <div class="section">
+    <h2>Aisle</h2>
+    <div id="aisleGrid" class="grid aisle-grid"></div>
+  </div>
+
+  <div class="section">
+    <h2>Rack</h2>
+    <div id="rackGrid" class="grid rack-grid"></div>
+  </div>
+
+  <div class="section">
+    <h2>Level</h2>
+    <div id="levelGrid" class="grid level-grid"></div>
+  </div>
+
+  <div class="section">
+    <h2>Bin</h2>
+    <div id="binGrid" class="grid bin-grid"></div>
+  </div>
+
+  <div class="selection">
+    <p>Selected Location</p>
+    <div id="selectedLocation">F0-A1-001-01-A</div>
+  </div>
+
+  <button class="generate" onclick="generateQR()">
+    Generate QR Code
+  </button>
+
+  <div id="qrResult">
+
+    <h2>Location QR Code</h2>
+
+    <canvas id="qrCanvas"></canvas>
+
+    <div id="qrText">F0-A1-001-01-A</div>
+
+    <button class="download" onclick="downloadQR()">
+      Download QR Code PNG
+    </button>
+
+  </div>
+
+</div>
+
+<div class="footer">
+  PrasadQRCode
+</div>
+
+<script>
+
+// DEFAULT SELECTED LOCATION
+let selected = {
+  aisle: "A1",
+  rack: "001",
+  level: "01",
+  bin: "A"
+};
+
+
+// CREATE BUTTONS
+function createGrid(containerId, values, key) {
+
+  const container = document.getElementById(containerId);
+
+  values.forEach(value => {
+
+    const button = document.createElement("button");
+
+    button.className = "option";
+    button.textContent = value;
+    button.dataset.value = value;
+
+    button.onclick = function() {
+
+      selected[key] = value;
+
+      updateGrid();
+      updateLocation();
+
+    };
+
+    container.appendChild(button);
+
+  });
+
+}
+
+
+// UPDATE ACTIVE BUTTONS
+function updateGrid() {
+
+  document.querySelectorAll(".option").forEach(button => {
+
+    const parent = button.parentElement.id;
+
+    let key = "";
+
+    if (parent === "aisleGrid") key = "aisle";
+    if (parent === "rackGrid") key = "rack";
+    if (parent === "levelGrid") key = "level";
+    if (parent === "binGrid") key = "bin";
+
+    button.classList.toggle(
+      "active",
+      button.dataset.value === selected[key]
+    );
+
+  });
+
+}
+
+
+// LOCATION CODE FORMAT
+function getLocationCode() {
+
+  const aisle = selected.aisle;
+
+  const rack = String(selected.rack).padStart(3, "0");
+
+  const level = String(selected.level).padStart(2, "0");
+
+  const bin = selected.bin;
+
+  return "F0-" + aisle + "-" + rack + "-" + level + "-" + bin;
+
+}
+
+
+// DISPLAY LOCATION
+function updateLocation() {
+
+  document.getElementById("selectedLocation").textContent =
+    getLocationCode();
+
+}
+
+
+// GENERATE QR CODE
+function generateQR() {
+
+  const locationCode = getLocationCode();
+
+  const canvas = document.getElementById("qrCanvas");
+
+  QRCode.toCanvas(
+    canvas,
+    locationCode,
+    {
+      width: 300,
+      margin: 3,
+      errorCorrectionLevel: "H",
+      color: {
+        dark: "#000000",
+        light: "#ffffff"
+      }
+    },
+    function(error) {
+
+      if (error) {
+        alert("QR Code generation failed!");
+        return;
+      }
+
+      document.getElementById("qrResult").style.display = "block";
+
+      document.getElementById("qrText").textContent =
+        locationCode;
+
+    }
+  );
+
+}
+
+
+// DOWNLOAD QR CODE
+function downloadQR() {
+
+  const canvas = document.getElementById("qrCanvas");
+
+  const locationCode = getLocationCode();
+
+  const link = document.createElement("a");
+
+  link.download = locationCode + ".png";
+
+  link.href = canvas.toDataURL("image/png");
+
+  link.click();
+
+}
+
+
+// AISLE A1 TO A21
+createGrid(
+  "aisleGrid",
+  Array.from({length: 21}, (_, i) => "A" + (i + 1)),
+  "aisle"
+);
+
+
+// RACK 001 TO 028
+createGrid(
+  "rackGrid",
+  Array.from({length: 28}, (_, i) =>
+    String(i + 1).padStart(3, "0")
+  ),
+  "rack"
+);
+
+
+// LEVEL 01 TO 11
+createGrid(
+  "levelGrid",
+  Array.from({length: 11}, (_, i) =>
+    String(i + 1).padStart(2, "0")
+  ),
+  "level"
+);
+
+
+// BIN A TO F
+createGrid(
+  "binGrid",
+  ["A", "B", "C", "D", "E", "F"],
+  "bin"
+);
+
+
+// INITIALIZE
+updateGrid();
+updateLocation();
+
+</script>
+
+</body>
+</html>
